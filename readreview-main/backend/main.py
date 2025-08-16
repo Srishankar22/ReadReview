@@ -62,7 +62,8 @@ async def predict_paper(pdf: UploadFile = File(...)):
     novelty_score = round(5 - normalize(util.cos_sim(paper_embedding, accepted_embeddings)[0].mean().item(), 0.2, 0.9), 2)
 
     # Quality Score
-    tool = language_tool_python.LanguageTool('en-US')
+    #tool = language_tool_python.LanguageTool('en-US')
+    tool = language_tool_python.LanguageToolPublicAPI('en-US')
     matches = tool.check(paper_text)
     error_count = len(matches)
     total_words = len(paper_text.split())

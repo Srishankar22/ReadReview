@@ -61,13 +61,40 @@ async def predict_paper(pdf: UploadFile = File(...)):
     paper_embedding = model.encode(paper_text[:1000], convert_to_tensor=True)
     novelty_score = round(5 - normalize(util.cos_sim(paper_embedding, accepted_embeddings)[0].mean().item(), 0.2, 0.9), 2)
 
-    # Quality Score
-    #tool = language_tool_python.LanguageTool('en-US')
-    tool = language_tool_python.LanguageToolPublicAPI('en-US')
-    matches = tool.check(paper_text)
-    error_count = len(matches)
-    total_words = len(paper_text.split())
-    errors_per_100_words = error_count / max(total_words / 100, 1)
+    # # Quality Score
+    # tool = language_tool_python.LanguageTool('en-US')
+    # #tool = language_tool_python.LanguageToolPublicAPI('en-US')
+    # matches = tool.check(paper_text)
+    # error_count = len(matches)
+    # total_words = len(paper_text.split())
+    # errors_per_100_words = error_count / max(total_words / 100, 1)
+    # grammar_score_raw = max(0, 100 - (errors_per_100_words / 20) * 100)
+    # flesch_score = textstat.flesch_reading_ease(paper_text)
+    # grammar_score_scaled = normalize(grammar_score_raw, 50, 100)
+    # flesch_scaled = normalize(flesch_score, 0, 60)
+    # quality_score = round((grammar_score_scaled + flesch_scaled) / 2, 2)
+
+    # Quality Score  — local LanguageTool + chunking for large papers
+    tool = language_tool_python.LanguageTool('en-US')
+
+    CHUNK_CHARS = 50_000
+    total_matches = 0
+    total_words_checked = 0
+
+    for i in range(0, len(paper_text), CHUNK_CHARS):
+        chunk = paper_text[i:i + CHUNK_CHARS]
+        try:
+            m = tool.check(chunk)           # local LT (no URL limits)
+        except Exception:
+            m = []                          # keep going even if one chunk hiccups
+        total_matches += len(m)
+        total_words_checked += len(chunk.split())
+
+    # avoid div-by-zero if something odd happens
+    if total_words_checked <= 0:
+        total_words_checked = 1
+
+    errors_per_100_words = total_matches / (total_words_checked / 100)
     grammar_score_raw = max(0, 100 - (errors_per_100_words / 20) * 100)
     flesch_score = textstat.flesch_reading_ease(paper_text)
     grammar_score_scaled = normalize(grammar_score_raw, 50, 100)

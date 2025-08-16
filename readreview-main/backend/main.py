@@ -75,6 +75,7 @@ async def predict_paper(pdf: UploadFile = File(...)):
     # quality_score = round((grammar_score_scaled + flesch_scaled) / 2, 2)
 
     # Quality Score  — local LanguageTool + chunking for large papers
+    LT_PATH = "/usr/share/languagetool"
     tool = language_tool_python.LanguageTool('en-US')
 
     CHUNK_CHARS = 50_000
